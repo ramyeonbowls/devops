@@ -1,0 +1,72 @@
+{
+  "name": "LogPulse Observability",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "dsznajder.es7-react-js-snippets",
+        "ms-azuretools.vscode-docker",
+        "qwtel.sqlite-viewer",
+        "humao.rest-client",
+        "eamodio.gitlens",
+        "editorconfig.editorconfig",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "typescript.preferences.quoteStyle": "single",
+        "go.toolsManagement.autoUpdate": true,
+        "go.formatTool": "goimports",
+        "go.lintTool": "golangci-lint",
+        "tailwindCSS.includeLanguages": {
+          "typescriptreact": "html"
+        },
+        "files.associations": {
+          "Caddyfile": "caddyfile"
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "forwardPorts": [3000, 8080, 4224],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend Dev Server (Vite)",
+      "onAutoForward": "openBrowser"
+    },
+    "8080": {
+      "label": "Go Backend API",
+      "onAutoForward": "silent"
+    },
+    "4224": {
+      "label": "DBX",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postAttachCommand": "bash .devcontainer/post-attach.sh",
+  "remoteUser": "root",
+  "mounts": [
+    "source=logpulse-gomodcache,target=/root/go/pkg/mod,type=volume",
+    "source=logpulse-nodemodules,target=/workspace/logs/node_modules,type=volume"
+  ],
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    "PORT": "3000",
+    "GOPATH": "/root/go",
+    "PATH": "/root/go/bin:/usr/local/go/bin:${PATH}"
+  },
+  "shutdownAction": "stopContainer"
+}

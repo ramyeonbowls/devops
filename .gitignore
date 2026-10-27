@@ -1,0 +1,33 @@
+# The application is maintained in its own Git repository.
+/logs/
+
+# Local environment files; keep the documented template.
+.env
+.env.*
+!.env.example
+.devcontainer/.env*
+
+# Local TLS certificates and private keys.
+/certs/
+/caddy-local-root.crt
+*.key
+*.pem
+*.crt
+
+# Runtime databases and generated data.
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+/data/
+/bin/
+
+# Build and tool output.
+/dist/
+/build/
+/coverage/
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db

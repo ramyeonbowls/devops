@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Runs each time you attach to the devcontainer (not just on create).
+# Shows status and helpful commands — does NOT auto-start servers
+# so you can choose what to run.
+
+echo ""
+echo "┌─────────────────────────────────────────────────┐"
+echo "│  LogPulse Observability — Dev Container Ready   │"
+echo "└─────────────────────────────────────────────────┘"
+echo ""
+echo "  Project   : /workspace"
+echo "  Frontend  : /workspace/logs  (Node 22 + Vite + React)"
+echo "  Backend   : /workspace/logs/backend  (Go 1.25)"
+echo ""
+echo "  Useful commands:"
+echo "  ┌─ Frontend ────────────────────────────────────"
+echo "  │  cd /workspace/logs && npm run dev"
+echo "  │    → Vite dev server on http://localhost:3000"
+echo "  │"
+echo "  ├─ Backend ─────────────────────────────────────"
+echo "  │  cd /workspace/logs/backend && go run main.go"
+echo "  │    → Go API server on http://localhost:8080"
+echo "  │"
+echo "  ├─ Production (Docker Compose) ─────────────────"
+echo "  │  docker compose up -d"
+echo "  │    → Full stack via Caddy on http://localhost:80"
+echo "  │"
+echo "  └─ SQLite ──────────────────────────────────────"
+echo "     /workspace/logs/data/logpulse.sqlite"
+echo ""

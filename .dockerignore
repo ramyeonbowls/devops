@@ -1,0 +1,9 @@
+.git
+.env
+**/.git
+**/node_modules
+**/data
+**/dist
+logs/backend
+logs/.env
+certs

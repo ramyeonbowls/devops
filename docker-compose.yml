@@ -1,0 +1,119 @@
+# ============================================================
+# LogPulse - Docker Compose
+#
+# Services:
+#   logpulse-backend  - Go API + SQLite (port 8080 internal)
+#   logpulse-frontend - Static React build (port 80 internal)
+#   dbx               - t8y2/dbx:latest
+#   caddy             - Reverse proxy        (port 80 / 443 public)
+#
+# All Docker config lives here at /devops/ (not inside /devops/logs/)
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # 1. Go backend
+  # ----------------------------------------------------------
+  logpulse-backend:
+    build:
+      context: ./logs/backend
+      dockerfile: Dockerfile
+    container_name: logpulse-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DATA_DIR: /app/data
+      LOG_ALLOWED_ROOTS: ${LOG_ALLOWED_ROOTS:-/var/log,/app/data}
+    env_file:
+      - .env
+    volumes:
+      - logpulse-data:/app/data
+    networks:
+      - logpulse-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ----------------------------------------------------------
+  # 2. Static React frontend; API requests are routed directly to Go by Caddy.
+  # ----------------------------------------------------------
+  logpulse-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: logpulse-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - logpulse-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ----------------------------------------------------------
+  # 3. DBX
+  # ----------------------------------------------------------
+  dbx:
+    image: t8y2/dbx:latest
+    container_name: logpulse-dbx
+    restart: unless-stopped
+    ports:
+      - "4224:4224"
+    networks:
+      - logpulse-net
+
+  # ----------------------------------------------------------
+  # 4. Caddy reverse proxy
+  # ----------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: logpulse-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # <-- Tambahkan ini
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - logpulse-net
+    depends_on:
+      logpulse-frontend:
+        condition: service_healthy
+      logpulse-backend:
+        condition: service_healthy
+
+# ----------------------------------------------------------
+# Volumes
+# ----------------------------------------------------------
+volumes:
+  logpulse-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+
+# ----------------------------------------------------------
+# Networks
+# ----------------------------------------------------------
+networks:
+  logpulse-net:
+    name: devops_logpulse-net
+    external: true
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"

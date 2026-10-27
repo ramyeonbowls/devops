@@ -1,0 +1,39 @@
+{
+	admin off
+}
+
+dbx.cloudeskaerp.test {
+    tls /certs/_wildcard.cloudeskaerp.test+3.pem /certs/_wildcard.cloudeskaerp.test+3-key.pem
+    encode gzip zstd
+
+    # Ubah dari container name langsung ke host.docker.internal atau gateway host
+    reverse_proxy host.docker.internal:4224
+
+    log {
+        output stdout
+        format console
+    }
+}
+
+logs.cloudeskaerp.test {
+	tls /certs/_wildcard.cloudeskaerp.test+3.pem /certs/_wildcard.cloudeskaerp.test+3-key.pem
+	encode zstd gzip
+
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy logpulse-backend:8080 {
+			transport http {
+				response_header_timeout 0
+			}
+		}
+	}
+
+	handle {
+		reverse_proxy logpulse-frontend:80
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
