@@ -10,6 +10,7 @@
 # Local TLS certificates and private keys.
 /certs/
 /caddy-local-root.crt
+.secrets/
 *.key
 *.pem
 *.crt

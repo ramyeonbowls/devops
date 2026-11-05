@@ -23,12 +23,15 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       PORT: "8080"
       DATA_DIR: /app/data
       LOG_ALLOWED_ROOTS: ${LOG_ALLOWED_ROOTS:-/var/log,/app/data}
-    env_file:
-      - .env
+      PROMETHEUS_METRICS_TOKEN_FILE: /run/secrets/prometheus_metrics_token
+    secrets:
+      - prometheus_metrics_token
     volumes:
       - logpulse-data:/app/data
     networks:
@@ -69,13 +72,70 @@ services:
     restart: unless-stopped
     ports:
       - "4224:4224"
+    environment:
+      DBX_DATA_DIR: /app/data
+      DBX_PASSWORD: ${DBX_PASSWORD}
+      DBX_DISABLE_PASSWORD_VIEWER: "true"
     volumes:
+      - dbx-data:/app/data
       - logpulse-data:/logpulse-data:ro
     networks:
       - logpulse-net
 
   # ----------------------------------------------------------
-  # 4. Caddy reverse proxy
+  # 4. Prometheus scrapes the private, token-protected Go metrics endpoint.
+  # ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    container_name: logpulse-prometheus
+    restart: unless-stopped
+    group_add:
+      - "${PROMETHEUS_SECRET_GID:-1000}"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - prometheus_metrics_token
+    networks:
+      - logpulse-net
+    depends_on:
+      logpulse-backend:
+        condition: service_healthy
+
+  # ----------------------------------------------------------
+  # 5. Grafana dashboards, served through Caddy only.
+  # ----------------------------------------------------------
+  grafana:
+    image: grafana/grafana:13.2.4
+    container_name: logpulse-grafana
+    restart: unless-stopped
+    group_add:
+      - "${PROMETHEUS_SECRET_GID:-1000}"
+    environment:
+      GF_SERVER_ROOT_URL: https://grafana.cloudeskaerp.test/
+      GF_SERVER_DOMAIN: grafana.cloudeskaerp.test
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    secrets:
+      - grafana_admin_password
+    networks:
+      - logpulse-net
+    depends_on:
+      - prometheus
+
+  # ----------------------------------------------------------
+  # 6. Caddy reverse proxy
   # ----------------------------------------------------------
   caddy:
     image: caddy:2-alpine
@@ -98,6 +158,8 @@ services:
         condition: service_healthy
       logpulse-backend:
         condition: service_healthy
+      grafana:
+        condition: service_started
 
 # ----------------------------------------------------------
 # Volumes
@@ -105,10 +167,22 @@ services:
 volumes:
   logpulse-data:
     driver: local
+  dbx-data:
+    driver: local
   caddy-data:
     driver: local
   caddy-config:
     driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+secrets:
+  prometheus_metrics_token:
+    file: ./.secrets/prometheus_metrics_token
+  grafana_admin_password:
+    file: ./.secrets/grafana_admin_password
 
 # ----------------------------------------------------------
 # Networks
@@ -117,5 +191,3 @@ networks:
   logpulse-net:
     name: devops_logpulse-net
     external: true
-    driver_opts:
-      com.docker.network.bridge.enable_icc: "true"

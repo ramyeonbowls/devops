@@ -15,6 +15,17 @@ dbx.cloudeskaerp.test {
     }
 }
 
+grafana.cloudeskaerp.test {
+	tls /certs/_wildcard.cloudeskaerp.test+3.pem /certs/_wildcard.cloudeskaerp.test+3-key.pem
+	encode zstd gzip
+	reverse_proxy logpulse-grafana:3000
+
+	log {
+		output stdout
+		format console
+	}
+}
+
 logs.cloudeskaerp.test {
 	tls /certs/_wildcard.cloudeskaerp.test+3.pem /certs/_wildcard.cloudeskaerp.test+3-key.pem
 	encode zstd gzip
